@@ -1,43 +1,44 @@
 import tensorflow as tf
 
 from encode import lstm_encoder
+from propogate import time_distributed_convolution_layer
 from utils import shape
 
 
-def lstm_word_embedding(chars, lengths, embed_dim, scope='char_embed', reuse=False):
+def embedding_from_sparse_encodings(encodings, shape, embedding_matrix=None, scope='gather-embed',
+                                    reuse=False):
     """
-    Word embeddings via LSTM encoding of character sequences.
+    Gathers embedding vectors corresponding to values in encodings.  If embedding_matrix is passed,
+    then it will be used to initialize the embedding matrix.  Otherwise, the matrix will be
+    initialized with random embeddings.
 
     Args:
-        chars: Tensor of shape [batch size, word sequence length, char sequence length, num characters]
-        lengths: Tensor of shape [batch size, word_sequence length]
-        embed_dim: dimension of word embeddings
+        encodings: Tensor of shape [batch size, sequence length]
+        shape: Shape of 2D parameter matrix.  The first dimension should contain
+            the vocabulary size and the second dimension should be the size
+            of the embedding dimension.
+        embedding_matrix: numpy array of the embedding matrix
 
     Returns:
-        Tensor of shape [batch size, word sequence length, embed_dim]
+        Tensor of shape [batch size, sequence length, shape[1]]
 
     """
-    # this is super inefficient
-    chars = tf.unstack(chars, axis=1)
-    lengths = tf.unstack(lengths, axis=1)
-
-    word_embeddings = []
-    for i, (char, length) in enumerate(zip(chars, lengths)):
-        temp_reuse = i != 0 or reuse
-        _, embedding = lstm_encoder(char, length, embed_dim, 1.0, scope=scope, reuse=temp_reuse)
-        word_embeddings.append(embedding)
-    word_embeddings = tf.stack(word_embeddings, axis=1)
-
-    return word_embeddings
+    with tf.variable_scope(scope, reuse=reuse):
+        W = tf.get_variable(
+            name='weights',
+            initializer=embedding_matrix or tf.contrib.layers.variance_scaling_initializer(),
+            shape=shape
+        )
+        embeddings = tf.nn.embedding_lookup(W, encodings)
+        return embeddings
 
 
-def convolutional_word_embedding(inputs, lengths, embed_dim, convolution_width, bias=True, scope='char_embed', reuse=False):
+def dense_word_embedding_from_chars(chars, embed_dim, bias=True, scope='dense-word-embed', reuse=False):
     """
-    Word embeddings via LSTM encoding of character sequences.
+    Word embeddings via dense transformation + maxpooling of character sequences.
 
     Args:
-        chars: Tensor of shape [batch size, word sequence length, char sequence length, num characters]
-        lengths: Tensor of shape [batch size, word_sequence length]
+        chars: Tensor of shape [batch size, word sequence length, char sequence length, alphabet size]
         embed_dim: dimension of word embeddings
 
     Returns:
@@ -45,13 +46,13 @@ def convolutional_word_embedding(inputs, lengths, embed_dim, convolution_width, 
 
     """
     with tf.variable_scope(scope, reuse=reuse):
-        input_channels = shape(inputs, 1)
+        chars = tf.cast(chars, tf.float32)
         W = tf.get_variable(
             name='weights',
             initializer=tf.contrib.layers.variance_scaling_initializer(),
-            shape=[convolution_width, input_channels, embed_dim]
+            shape=[shape(chars, -1), embed_dim]
         )
-        z = tf.nn.convolution(inputs, W, padding='SAME', strides=[1])
+        z = tf.einsum('ijkl,lm->ijkm', chars, W)
         if bias:
             b = tf.get_variable(
                 name='biases',
@@ -59,4 +60,65 @@ def convolutional_word_embedding(inputs, lengths, embed_dim, convolution_width, 
                 shape=[embed_dim]
             )
             z = z + b
-        return z
+        dense_word_embedding = tf.reduce_max(z, 2)
+        return dense_word_embedding
+
+
+def lstm_word_embedding_from_chars(chars, lengths, embed_dim, scope='lstm-word-embed', reuse=False):
+    """
+    Word embeddings via LSTM encoding of character sequences.
+
+    Args:
+        chars: Tensor of shape [batch size, word sequence length, char sequence length, num characters]
+        lengths: Tensor of shape [batch size, word_sequence length]
+        embed_dim: dimension of word embeddings
+
+    Returns:
+        Tensor of shape [batch size, word sequence length, embed_dim]
+
+    """
+    chars = tf.cast(chars, tf.float32)
+
+    # this is super inefficient
+    chars = tf.unstack(chars, axis=0)
+    lengths = tf.unstack(lengths, axis=0)
+
+    lstm_word_embeddings = []
+    for i, (char, length) in enumerate(zip(chars, lengths)):
+        temp_reuse = i != 0 or reuse
+        embedding = lstm_encoder(char, length, embed_dim, 1.0, scope=scope, reuse=temp_reuse)
+        lstm_word_embeddings.append(embedding)
+    lstm_word_embeddings = tf.stack(lstm_word_embeddings, axis=0)
+
+    return lstm_word_embeddings
+
+
+def convolutional_word_embedding_from_chars(chars, embed_dim, convolution_width, bias=True,
+                                            scope='conv-word-embed', reuse=False):
+    """
+    Word embeddings via convolution + maxpooling of character sequences.
+
+    Args:
+        chars: Tensor of shape [batch size, word sequence length, char sequence length, alphabet size]
+        embed_dim: dimension of word embeddings
+        convolution_width:  Number of characters used in the convolution
+
+    Returns:
+        Tensor of shape [batch size, word sequence length, embed_dim]
+
+    """
+    chars = tf.cast(chars, tf.float32)
+
+    # this is super inefficient
+    chars = tf.unstack(chars, axis=0)
+
+    conv_word_embeddings = []
+    for i, char in enumerate(chars):
+        temp_reuse = i != 0 or reuse
+        conv = time_distributed_convolution_layer(
+            char, embed_dim, convolution_width, scope=scope, reuse=temp_reuse)
+        embedding = tf.reduce_max(conv, axis=1)
+        conv_word_embeddings.append(embedding)
+    conv_word_embeddings = tf.stack(conv_word_embeddings, axis=0)
+
+    return conv_word_embeddings
