@@ -20,8 +20,6 @@ some helper functions for semantic textual similarity
   * concat attention
   * dot attention
   * cosine attention
-
-**match.py**
   * softmax attentive matching
   * maxpool attentive matching
   * argmax attentive matching
