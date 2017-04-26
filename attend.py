@@ -8,8 +8,8 @@ def multiplicative_attention(a, b, a_lengths, b_lengths, max_seq_len, hidden_uni
                              scope='multiplicative-attention', reuse=False):
     """
     For sequences a and b of lengths a_lengths and b_lengths, computes an attention matrix attn,
-    where attn(i, j) = dot(dot(v, tanh(W*a_i)), dot(v, tanh(W*b_j))).  W is a learnable matrix.
-    The rows of attn are softmax normalized.
+    where attn(i, j) = dot(W*a_i, W*b_j).  W is a learnable matrix.  The rows of attn are
+    softmax normalized.
 
     Args:
         a: Tensor of shape [batch_size, max_seq_len, input_dim]
@@ -26,14 +26,7 @@ def multiplicative_attention(a, b, a_lengths, b_lengths, max_seq_len, hidden_uni
     with tf.variable_scope(scope, reuse=reuse):
         aW = time_distributed_dense(a, hidden_units, bias=False, scope='dense', reuse=False)
         bW = time_distributed_dense(b, hidden_units, bias=False, scope='dense', reuse=True)
-        v = tf.get_variable(
-            name='dot_weights',
-            initializer=tf.ones_initializer(),
-            shape=[hidden_units]
-        )
-        aWv = tf.einsum('ijkl,l->ijk', tf.nn.tanh(aW), v)
-        bWv = tf.einsum('ijkl,l->ijk', tf.nn.tanh(bW), v)
-        logits = tf.matmul(aWv, tf.transpose(bWv, (0, 2, 1)))
+        logits = tf.matmul(aW, tf.transpose(bW, (0, 2, 1)))
         logits = logits - tf.expand_dims(tf.reduce_max(logits, axis=2), 2)
         attn = tf.exp(logits)
         attn = mask_attention_weights(attn, a_lengths, b_lengths, max_seq_len)
