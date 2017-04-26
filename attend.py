@@ -4,6 +4,168 @@ from propogate import time_distributed_dense
 from utils import shape
 
 
+def multiplicative_attention(a, b, a_lengths, b_lengths, max_seq_len, hidden_units=150,
+                             scope='multiplicative-attention', reuse=False):
+    """
+    For sequences a and b of lengths a_lengths and b_lengths, computes an attention matrix attn,
+    where attn(i, j) = dot(dot(v, tanh(W*a_i)), dot(v, tanh(W*b_j))).  W is a learnable matrix.
+    The rows of attn are softmax normalized.
+
+    Args:
+        a: Tensor of shape [batch_size, max_seq_len, input_dim]
+        b: Tensor of shape [batch_size, max_seq_len, input_dim]
+        a_lengths: lengths of sequences in a of shape [batch_size]
+        b_lengths: lengths of sequences in b of shape [batch_size]
+        max_seq_len: length of padded sequences a and b
+        hidden_units: number of hidden units
+
+    Returns:
+        Tensor of shape [max_seq_len, max_seq_len]
+
+    """
+    with tf.variable_scope(scope, reuse=reuse):
+        aW = time_distributed_dense(a, hidden_units, bias=False, scope='dense', reuse=False)
+        bW = time_distributed_dense(b, hidden_units, bias=False, scope='dense', reuse=True)
+        v = tf.get_variable(
+            name='dot_weights',
+            initializer=tf.ones_initializer(),
+            shape=[hidden_units]
+        )
+        aWv = tf.einsum('ijkl,l->ijk', tf.nn.tanh(aW), v)
+        bWv = tf.einsum('ijkl,l->ijk', tf.nn.tanh(bW), v)
+        logits = tf.matmul(aWv, tf.transpose(bWv, (0, 2, 1)))
+        logits = logits - tf.expand_dims(tf.reduce_max(logits, axis=2), 2)
+        attn = tf.exp(logits)
+        attn = mask_attention_weights(attn, a_lengths, b_lengths, max_seq_len)
+        return attn / tf.expand_dims(tf.reduce_sum(attn, axis=2) + 1e-10, 2)
+
+
+def additive_attention(a, b, a_lengths, b_lengths, max_seq_len, hidden_units=150,
+                       scope='multiplicative-attention', reuse=False):
+    """
+    For sequences a and b of lengths a_lengths and b_lengths, computes an attention matrix attn,
+    where attn(i, j) = dot(v, tanh(W*a_i + W*b_j)).  v is a learnable vector and W is a learnable
+    matrix. The rows of attn are softmax normalized.
+
+    Args:
+        a: Tensor of shape [batch_size, max_seq_len, input_dim]
+        b: Tensor of shape [batch_size, max_seq_len, input_dim]
+        a_lengths: lengths of sequences in a of shape [batch_size]
+        b_lengths: lengths of sequences in b of shape [batch_size]
+        max_seq_len: length of padded sequences a and b
+        hidden_units: number of hidden units
+
+    Returns:
+        Tensor of shape [max_seq_len, max_seq_len]
+
+    """
+    with tf.variable_scope(scope, reuse=reuse):
+        aW = time_distributed_dense(a, hidden_units, bias=False, scope='dense', reuse=False)
+        bW = time_distributed_dense(b, hidden_units, bias=False, scope='dense', reuse=True)
+        aW = tf.expand_dims(aW, 2)
+        bW = tf.expand_dims(bW, 1)
+        v = tf.get_variable(
+            name='dot_weights',
+            initializer=tf.ones_initializer(),
+            shape=[hidden_units]
+        )
+        logits = tf.einsum('ijkl,l->ijk', tf.nn.tanh(aW + bW), v)
+        logits = logits - tf.expand_dims(tf.reduce_max(logits, axis=2), 2)
+        attn = tf.exp(logits)
+        attn = mask_attention_weights(attn, a_lengths, b_lengths, max_seq_len)
+        return attn / tf.expand_dims(tf.reduce_sum(attn, axis=2) + 1e-10, 2)
+
+
+def concat_attention(a, b, a_lengths, b_lengths, max_seq_len, hidden_units=150,
+                     scope='concat-attention', reuse=False):
+    """
+    For sequences a and b of lengths a_lengths and b_lengths, computes an attention matrix attn,
+    where attn(i, j) = dot(v, tanh(W*[a_i; b_j])).  v is a learnable vector and W is a learnable
+    matrix.  The rows of attn are softmax normalized.
+
+    Args:
+        a: Tensor of shape [batch_size, max_seq_len, input_dim]
+        b: Tensor of shape [batch_size, max_seq_len, input_dim]
+        a_lengths: lengths of sequences in a of shape [batch_size]
+        b_lengths: lengths of sequences in b of shape [batch_size]
+        max_seq_len: length of padded sequences a and b
+        hidden_units: number of hidden units
+
+    Returns:
+        Tensor of shape [max_seq_len, max_seq_len]
+
+    """
+    with tf.variable_scope(scope, reuse=reuse):
+        a = tf.expand_dims(a, 2)
+        b = tf.expand_dims(b, 1)
+        c = tf.concat([a, b], axis=3)
+        W = tf.get_variable(
+            name='matmul_weights',
+            initializer=tf.contrib.layers.variance_scaling_initializer(),
+            shape=[shape(c, -1), hidden_units]
+        )
+        cW = tf.einsum('ijkl,lm->ijkm', c, W)
+        v = tf.get_variable(
+            name='dot_weights',
+            initializer=tf.ones_initializer(),
+            shape=[hidden_units]
+        )
+        logits = tf.einsum('ijkl,l->ijk', tf.nn.tanh(cW), v)
+        logits = logits - tf.expand_dims(tf.reduce_max(logits, axis=2), 2)
+        attn = tf.exp(logits)
+        attn = mask_attention_weights(attn, a_lengths, b_lengths, max_seq_len)
+        return attn / tf.expand_dims(tf.reduce_sum(attn, axis=2) + 1e-10, 2)
+
+
+def dot_attention(a, b, a_lengths, b_lengths, max_seq_len):
+    """
+    For sequences a and b of lengths a_lengths and b_lengths, computes an attention matrix attn,
+    where attn(i, j) = dot(a_i, b_j). The rows of attn are softmax normalized.
+
+    Args:
+        a: Tensor of shape [batch_size, max_seq_len, input_dim]
+        b: Tensor of shape [batch_size, max_seq_len, input_dim]
+        a_lengths: lengths of sequences in a of shape [batch_size]
+        b_lengths: lengths of sequences in b of shape [batch_size]
+        max_seq_len: length of padded sequences a and b
+
+    Returns:
+        Tensor of shape [max_seq_len, max_seq_len]
+
+    """
+    logits = tf.matmul(a, tf.transpose(b, (0, 2, 1)))
+    logits = logits - tf.expand_dims(tf.reduce_max(logits, axis=2), 2)
+    attn = tf.exp(logits)
+    attn = mask_attention_weights(attn, a_lengths, b_lengths, max_seq_len)
+    return attn / tf.expand_dims(tf.reduce_sum(attn, axis=2) + 1e-10, 2)
+
+
+def cosine_attention(a, b, a_lengths, b_lengths, max_seq_len):
+    """
+    For sequences a and b of lengths a_lengths and b_lengths, computes an attention matrix attn,
+    where attn(i, j) = dot(a_i, b_j) / (l2_norm(a_i)*l2_norm(b_j)). The rows of attn are softmax
+    normalized.
+
+    Args:
+        a: Tensor of shape [batch_size, max_seq_len, input_dim]
+        b: Tensor of shape [batch_size, max_seq_len, input_dim]
+        a_lengths: lengths of sequences in a of shape [batch_size]
+        b_lengths: lengths of sequences in b of shape [batch_size]
+        max_seq_len: length of padded sequences a and b
+
+    Returns:
+        Tensor of shape [max_seq_len, max_seq_len]
+
+    """
+    a_norm = tf.nn.l2_normalize(a, dim=2)
+    b_norm = tf.nn.l2_normalize(b, dim=2)
+    logits = tf.matmul(a_norm, tf.transpose(b_norm, (0, 2, 1)))
+    logits = logits - tf.expand_dims(tf.reduce_max(logits, axis=2), 2)
+    attn = tf.exp(logits)
+    attn = mask_attention_weights(attn, a_lengths, b_lengths, max_seq_len)
+    return attn / tf.expand_dims(tf.reduce_sum(attn, axis=2) + 1e-10, 2)
+
+
 def mask_attention_weights(weights, a_lengths, b_lengths, max_seq_len):
     """
     Masks an attention matrix for sequences a and b of lengths a_lengths and b_lengths so that
@@ -24,65 +186,3 @@ def mask_attention_weights(weights, a_lengths, b_lengths, max_seq_len):
     b_mask = tf.expand_dims(tf.sequence_mask(b_lengths, maxlen=max_seq_len), 1)
     seq_mask = tf.cast(tf.matmul(tf.cast(a_mask, tf.int32), tf.cast(b_mask, tf.int32)), tf.bool)
     return tf.where(seq_mask, weights, tf.zeros_like(weights))
-
-
-def attention_matrix(a, b, a_lengths, b_lengths, max_seq_len, scope='attention', reuse=False):
-    """
-    For sequences a and b of lengths a_lengths and b_lengths, computes an attention matrix of the
-    form tanh(a*W*b^T) where W is a trainable parameter matrix.
-
-    Args:
-        a: Tensor of shape [batch_size, max_seq_len, input_dim]
-        b: Tensor of shape [batch_size, max_seq_len, input_dim]
-        a_lengths: lengths of sequences in a of shape [batch_size]
-        b_lengths: lengths of sequences in b of shape [batch_size]
-        max_seq_len: length of padded sequences a and b
-
-    Returns:
-        Tensor of shape [max_seq_len, max_seq_len]
-
-    """
-    with tf.variable_scope(scope, reuse=reuse):
-        W = tf.get_variable(
-            name='weights',
-            initializer=tf.contrib.layers.variance_scaling_initializer(),
-            shape=[shape(a, -1), shape(b, -1)]
-        )
-        aWb = tf.nn.tanh(tf.matmul(tf.matmul(a, W), tf.transpose(b, (0, 2, 1))))
-        logits = aWb - tf.expand_dims(tf.reduce_max(aWb, axis=2), 2)
-        weights = tf.exp(logits)
-        weights = mask_attention_weights(weights, a_lengths, b_lengths, max_seq_len)
-        return weights / tf.expand_dims(tf.reduce_sum(weights, axis=2) + 1e-10, 2)
-
-
-def factorized_attention_matrix(a, b, a_lengths, b_lengths, max_seq_len, num_dense_layers=1, hidden_units=150,
-                                scope='factorized-attention', reuse=False):
-    """
-    For sequences a and b of lengths a_lengths and b_lengths, computes an attention matrix of the
-    form F(a)*F(b)^T, where F is a feedforward network.
-
-    Args:
-        a: Tensor of shape [batch_size, max_seq_len, input_dim]
-        b: Tensor of shape [batch_size, max_seq_len, input_dim]
-        a_lengths: lengths of sequences in a of shape [batch_size]
-        b_lengths: lengths of sequences in b of shape [batch_size]
-        max_seq_len: length of padded sequences a and b
-        num_dense_layers: number of dense layers in feedforward network F
-        hidden_units: number of hidden units in each layer of F
-
-    Returns:
-        Tensor of shape [max_seq_len, max_seq_len]
-
-    """
-    with tf.variable_scope(scope, reuse=reuse):
-        for i in range(num_dense_layers):
-            activation = None if i == num_dense_layers - 1 else tf.nn.tanh
-            a = time_distributed_dense(a, hidden_units, activation=activation,
-                                       bias=False, scope='dense_' + str(i), reuse=False)
-            b = time_distributed_dense(b, hidden_units, activation=activation,
-                                       bias=False, scope='dense_' + str(i), reuse=True)
-        logits = tf.matmul(a, tf.transpose(b, (0, 2, 1)))
-        logits = logits - tf.expand_dims(tf.reduce_max(logits, axis=2), 2)
-        weights = tf.exp(logits)
-        weights = mask_attention_weights(weights, a_lengths, b_lengths, max_seq_len)
-        return weights / tf.expand_dims(tf.reduce_sum(weights, axis=2) + 1e-10, 2)

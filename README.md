@@ -15,16 +15,17 @@ some helper functions for semantic textual similarity
   * dense layer
 
 **attend.py**
-  * global attention matrix - tanh(aWb^T)
-  * factorized global attention matrix - F(a)F(b)^T, where F is a feedforward network
-  * local attention matrix (TODO)
-  * local attention matrix with monotonic alignment (TODO)
+  * multiplicative attention: attn(i, j) = dot(dot(v, tanh(Wa<sub>i</sub>)), dot(v, tanh(Wb<sub>j</sub>)))
+  * 
+  * additive attention: attn(i, j) = dot(v, tanh(Wa<sub>i</sub> + Wb<sub>j</sub>))
+  * concat attention: attn(i, j) = dot(v, tanh(W[a<sub>i</sub>; b<sub>j</sub>]))
+  * dot attention: attn(i, j) = dot(a<sub>i</sub>, b<sub>j</sub>)
+  * cosine attention: attn(i, j) = cosine(a<sub>i</sub>, b<sub>j</sub>)
 
 **match.py**
   * softmax attentive matching
   * maxpool attentive matching
   * argmax attentive matching
-  * final state matching (TODO)
 
 **compare.py**
   * cosine
