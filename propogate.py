@@ -126,12 +126,12 @@ def time_distributed_convolution_layer(inputs, output_units, convolution_width, 
 
     """
     with tf.variable_scope(scope, reuse=reuse):
-        input_channels = shape(inputs, 1)
         W = tf.get_variable(
             name='weights',
             initializer=tf.contrib.layers.variance_scaling_initializer(),
-            shape=[convolution_width, input_channels, output_units]
+            shape=[convolution_width, shape(inputs, 2), output_units]
         )
+
         z = tf.nn.convolution(inputs, W, padding='SAME', strides=[1])
         if bias:
             b = tf.get_variable(
@@ -145,7 +145,8 @@ def time_distributed_convolution_layer(inputs, output_units, convolution_width, 
         return z
 
 
-def dense_layer(inputs, output_units, bias=True, activation=None, dropout=None, scope='dense-layer', reuse=False):
+def dense_layer(inputs, output_units, bias=True, activation=None, dropout=None, scope='dense-layer',
+                reuse=False):
     """
     Applies a dense layer to a 2D tensor of shape [batch_size, input_units]
     to produce a tensor of shape [batch_size, output_units].

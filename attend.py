@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from propogate import time_distributed_dense
+from propogate import time_distributed_dense_layer
 from utils import shape
 
 
@@ -24,8 +24,8 @@ def multiplicative_attention(a, b, a_lengths, b_lengths, max_seq_len, hidden_uni
 
     """
     with tf.variable_scope(scope, reuse=reuse):
-        aW = time_distributed_dense(a, hidden_units, bias=False, scope='dense', reuse=False)
-        bW = time_distributed_dense(b, hidden_units, bias=False, scope='dense', reuse=True)
+        aW = time_distributed_dense_layer(a, hidden_units, bias=False, scope='dense', reuse=False)
+        bW = time_distributed_dense_layer(b, hidden_units, bias=False, scope='dense', reuse=True)
         logits = tf.matmul(aW, tf.transpose(bW, (0, 2, 1)))
         logits = logits - tf.expand_dims(tf.reduce_max(logits, axis=2), 2)
         attn = tf.exp(logits)
@@ -34,7 +34,7 @@ def multiplicative_attention(a, b, a_lengths, b_lengths, max_seq_len, hidden_uni
 
 
 def additive_attention(a, b, a_lengths, b_lengths, max_seq_len, hidden_units=150,
-                       scope='multiplicative-attention', reuse=False):
+                       scope='additive-attention', reuse=False):
     """
     For sequences a and b of lengths a_lengths and b_lengths, computes an attention matrix attn,
     where attn(i, j) = dot(v, tanh(W*a_i + W*b_j)).  v is a learnable vector and W is a learnable
@@ -53,8 +53,8 @@ def additive_attention(a, b, a_lengths, b_lengths, max_seq_len, hidden_units=150
 
     """
     with tf.variable_scope(scope, reuse=reuse):
-        aW = time_distributed_dense(a, hidden_units, bias=False, scope='dense', reuse=False)
-        bW = time_distributed_dense(b, hidden_units, bias=False, scope='dense', reuse=True)
+        aW = time_distributed_dense_layer(a, hidden_units, bias=False, scope='dense', reuse=False)
+        bW = time_distributed_dense_layer(b, hidden_units, bias=False, scope='dense', reuse=True)
         aW = tf.expand_dims(aW, 2)
         bW = tf.expand_dims(bW, 1)
         v = tf.get_variable(
@@ -179,3 +179,98 @@ def mask_attention_weights(weights, a_lengths, b_lengths, max_seq_len):
     b_mask = tf.expand_dims(tf.sequence_mask(b_lengths, maxlen=max_seq_len), 1)
     seq_mask = tf.cast(tf.matmul(tf.cast(a_mask, tf.int32), tf.cast(b_mask, tf.int32)), tf.bool)
     return tf.where(seq_mask, weights, tf.zeros_like(weights))
+
+
+def softmax_attentive_matching(a, b, a_lengths, b_lengths, max_seq_len, attention_func=dot_attention,
+                               hidden_units=150, scope='softmax_attentive-matching', reuse=False):
+    """
+    Matches each vector in a with a weighted sum of the vectors in b.  The weighted sum is determined
+    by the attention matrix.  If factorized is True, then the attention matrix is the calculated
+    using factorized_attention_matrix.  Otherwise, attention_matrix will be used.
+
+    Args:
+        a: Tensor of shape [batch_size, max_seq_len, input_dim]
+        b: Tensor of shape [batch_size, max_seq_len, input_dim]
+        a_lengths: lengths of sequences in a of shape [batch_size]
+        b_lengths: lengths of sequences in b of shape [batch_size]
+        max_seq_len: length of padded sequences a and b
+        attention_func:  function, type of attention to use
+        num_dense_layers: number of dense layers in feedforward network F
+        hidden_units: number of hidden units in each layer of F
+
+    Returns:
+        Tensor of shape [batch_size, max_seq_len, input_dim] consisting of the matching vectors for
+        each timestep in a.
+
+    """
+    if attention_func in {multiplicative_attention, additive_attention, concat_attention}:
+        attn = attention_func(a, b, a_lengths, b_lengths, max_seq_len, hidden_units, scope=scope, reuse=reuse)
+    elif attention_func in {dot_attention, cosine_attention}:
+        attn = attention_func(a, b, a_lengths, b_lengths, max_seq_len)
+    else:
+        raise ValueError("invalid function given for attention_func")
+    return tf.matmul(attn, b)
+
+
+def maxpool_attentive_matching(a, b, a_lengths, b_lengths, max_seq_len, attention_func=dot_attention,
+                               hidden_units=150, scope='maxpool_attentive-matching', reuse=False):
+    """
+    Same as softmax_attentive_matching, but after weighting elements in b, uses maxpooling to reduce
+    the dimension instead of contraction.
+
+    Args:
+        a: Tensor of shape [batch_size, max_seq_len, input_dim]
+        b: Tensor of shape [batch_size, max_seq_len, input_dim]
+        a_lengths: lengths of sequences in a of shape [batch_size]
+        b_lengths: lengths of sequences in b of shape [batch_size]
+        max_seq_len: length of padded sequences a and b
+        factorized:  Whether or not to use a factorized attention matrix
+        num_dense_layers: number of dense layers in feedforward network F
+        hidden_units: number of hidden units in each layer of F
+
+    Returns:
+        Tensor of shape [batch_size, max_seq_len, input_dim] consisting of the matching vectors for
+        each timestep in a.
+
+    """
+    if attention_func in {multiplicative_attention, additive_attention, concat_attention}:
+        attn = attention_func(a, b, a_lengths, b_lengths, max_seq_len, hidden_units, scope=scope, reuse=reuse)
+    elif attention_func in {dot_attention, cosine_attention}:
+        attn = attention_func(a, b, a_lengths, b_lengths, max_seq_len)
+    else:
+        raise ValueError("invalid function given for attention_func")
+    return tf.reduce_max(tf.einsum('ijk,ikl->ijkl', attn, b), axis=2)
+
+
+def argmax_attentive_matching(a, b, a_lengths, b_lengths, max_seq_len, attention_func=dot_attention,
+                              hidden_units=150, scope='argmax_attentive-matching', reuse=False):
+    """
+    Same as softmax_attentive_matching, but instead of matching each vector in a with a weighted sum
+    of the vectors in b, it simply uses the most similar vector in b, where similarity is defined using
+    the values in the attention matrix.
+
+     Args:
+        a: Tensor of shape [batch_size, max_seq_len, input_dim]
+        b: Tensor of shape [batch_size, max_seq_len, input_dim]
+        a_lengths: lengths of sequences in a of shape [batch_size]
+        b_lengths: lengths of sequences in b of shape [batch_size]
+        max_seq_len: length of padded sequences a and b
+        factorized:  Whether or not to use a factorized attention matrix
+        num_dense_layers: number of dense layers in feedforward network F
+        hidden_units: number of hidden units in each layer of F
+
+    Returns:
+        Tensor of shape [batch_size, max_seq_len, input_dim] consisting of the matching vectors for
+        each timestep in a.
+
+    """
+    if attention_func in {multiplicative_attention, additive_attention, concat_attention}:
+        attn = attention_func(a, b, a_lengths, b_lengths, max_seq_len, hidden_units, scope=scope, reuse=reuse)
+    elif attention_func in {dot_attention, cosine_attention}:
+        attn = attention_func(a, b, a_lengths, b_lengths, max_seq_len)
+    else:
+        raise ValueError("invalid function given for attention_func")
+    b_match_idx = tf.argmax(attn, axis=2)
+    batch_index = tf.tile(tf.expand_dims(tf.range(shape(b, 0), dtype=tf.int64), 1), (1, max_seq_len))
+    b_idx = tf.stack([batch_index, b_match_idx], axis=2)
+    return tf.gather_nd(b, b_idx)
