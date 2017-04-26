@@ -1,5 +1,5 @@
-# semantic-textual-similarity
-some helper functions for semantic textual similarity
+# quora-duplicate-questions
+detect duplicate questions on Quora
 
 **embed.py**
   * embeddings from sparse encodings
