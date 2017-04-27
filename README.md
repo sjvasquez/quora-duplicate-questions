@@ -24,6 +24,13 @@ detect duplicate questions on Quora
   * maxpool attentive matching
   * argmax attentive matching
 
+**encode.py**
+  * lstm encoder
+  * bidirectional lstm encoder
+  * max pooling encoder
+  * sum pooling encoder
+  * mean pooling encoder
+
 **compare.py**
   * cosine
   * euclidian
