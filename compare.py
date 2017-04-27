@@ -8,8 +8,8 @@ def cosine(a_enc, b_enc):
     Compare the encoded representations a_enc and b_enc via cosine similarity.
 
     Args:
-        a_enc: Encoded representation of sequence a_enc. Tensor of shape [batch_size, input_units].
-        b_enc: Encoded representation of sequence b_enc. Tensor of shape [batch_size, input_units].
+        a_enc: Encoded representation of sequence a. Tensor of shape [batch_size, input_units].
+        b_enc: Encoded representation of sequence b. Tensor of shape [batch_size, input_units].
 
     Returns:
         Tensor of shape [batch size].
@@ -25,8 +25,8 @@ def euclidian(a_enc, b_enc):
     Compare the encoded representations a_enc and b_enc via euclidian distance.
 
     Args:
-        a_enc: Encoded representation of sequence a_enc. Tensor of shape [batch_size, input_units].
-        b_enc: Encoded representation of sequence b_enc. Tensor of shape [batch_size, input_units].
+        a_enc: Encoded representation of sequence a. Tensor of shape [batch_size, input_units].
+        b_enc: Encoded representation of sequence b. Tensor of shape [batch_size, input_units].
 
     Returns:
         Tensor of shape [batch size].
@@ -40,8 +40,8 @@ def manhattan(a_enc, b_enc):
     Compare the encoded representations a_enc and b_enc via manhattan distance
 
     Args:
-        a_enc: Encoded representation of sequence a_enc. Tensor of shape [batch_size, input_units].
-        b_enc: Encoded representation of sequence b_enc. Tensor of shape [batch_size, input_units].
+        a_enc: Encoded representation of sequence a. Tensor of shape [batch_size, input_units].
+        b_enc: Encoded representation of sequence b. Tensor of shape [batch_size, input_units].
 
     Returns:
         Tensor of shape [batch size].
@@ -55,8 +55,8 @@ def dot(a_enc, b_enc):
     Compare the encoded representations a_enc and b_enc via dot product
 
     Args:
-        a_enc: Encoded representation of sequence a_enc. Tensor of shape [batch_size, input_units].
-        b_enc: Encoded representation of sequence b_enc. Tensor of shape [batch_size, input_units].
+        a_enc: Encoded representation of sequence a. Tensor of shape [batch_size, input_units].
+        b_enc: Encoded representation of sequence b. Tensor of shape [batch_size, input_units].
 
     Returns:
         Tensor of shape [batch size].
@@ -71,8 +71,8 @@ def dense(a_enc, b_enc, bias=True, activation=None, dropout=None, scope='dense',
     function in the form of dense layer applied to the concatenation of a_enc and b_enc.
 
     Args:
-        a_enc: Encoded representation of sequence a_enc. Tensor of shape [batch_size, input_units].
-        b_enc: Encoded representation of sequence b_enc. Tensor of shape [batch_size, input_units].
+        a_enc: Encoded representation of sequence a. Tensor of shape [batch_size, input_units].
+        b_enc: Encoded representation of sequence b. Tensor of shape [batch_size, input_units].
         activation: Activation function.
         dropout: Dropout keep prob.  Float.
 
