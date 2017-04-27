@@ -5,7 +5,7 @@ from utils import shape
 
 def lstm_layer(inputs, lengths, state_size, keep_prob, scope='lstm-layer', reuse=False):
     """
-    LSTM layer
+    LSTM layer.
 
     Args:
         inputs: Tensor of shape [batch size, max sequence length, ...].
@@ -37,7 +37,7 @@ def lstm_layer(inputs, lengths, state_size, keep_prob, scope='lstm-layer', reuse
 
 def bidirectional_lstm_layer(inputs, lengths, state_size, keep_prob, scope='bi-lstm-layer', reuse=False):
     """
-    Bidirectional LSTM layer
+    Bidirectional LSTM layer.
 
     Args:
         inputs: Tensor of shape [batch size, max sequence length, ...].
@@ -84,9 +84,9 @@ def time_distributed_dense_layer(inputs, output_units, bias=True, activation=Non
 
     Args:
         inputs: Tensor of shape [batch size, max sequence length, ...].
-        output_units: Number of output units
-        activation: activation function
-        dropout: dropout keep prob
+        output_units: Number of output units.
+        activation: activation function.
+        dropout: dropout keep prob.
 
     Returns:
         Tensor of shape [batch size, max sequence length, output_units].
@@ -111,10 +111,10 @@ def time_distributed_dense_layer(inputs, output_units, bias=True, activation=Non
         return z
 
 
-def time_distributed_convolution_layer(inputs, output_units, convolution_width, bias=True, activation=None,
-                                       dropout=None, scope='time-distributed-conv-layer', reuse=False):
+def temporal_convolution_layer(inputs, output_units, convolution_width, bias=True, activation=None,
+                               dropout=None, scope='time-distributed-conv-layer', reuse=False):
     """
-    Convolution over the time axis of sequence data
+    Convolution over the temporal axis of sequence data.
 
     Args:
         inputs: Tensor of shape [batch size, max sequence length, input_units].
@@ -122,7 +122,7 @@ def time_distributed_convolution_layer(inputs, output_units, convolution_width, 
         convolution_width: Number of timesteps (words) to use in convolution.
 
     Returns:
-        Tensor of shape [batch size, max sequence length, output_units]
+        Tensor of shape [batch size, max sequence length, output_units].
 
     """
     with tf.variable_scope(scope, reuse=reuse):
@@ -153,9 +153,9 @@ def dense_layer(inputs, output_units, bias=True, activation=None, dropout=None, 
 
     Args:
         inputs: Tensor of shape [batch size, input_units].
-        output_units: Number of output units
-        activation: activation function
-        dropout: dropout keep prob
+        output_units: Number of output units.
+        activation: activation function.
+        dropout: dropout keep prob.
 
     Returns:
         Tensor of shape [batch size, output_units].

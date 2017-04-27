@@ -12,15 +12,15 @@ def multiplicative_attention(a, b, a_lengths, b_lengths, max_seq_len, hidden_uni
     softmax normalized.
 
     Args:
-        a: Tensor of shape [batch_size, max_seq_len, input_dim]
-        b: Tensor of shape [batch_size, max_seq_len, input_dim]
-        a_lengths: lengths of sequences in a of shape [batch_size]
-        b_lengths: lengths of sequences in b of shape [batch_size]
-        max_seq_len: length of padded sequences a and b
-        hidden_units: number of hidden units
+        a: Input sequence a.  Tensor of shape [batch_size, max_seq_len, input_size].
+        b: Input sequence b.  Tensor of shape [batch_size, max_seq_len, input_size].
+        a_lengths: Lengths of sequences in a.  Tensor of shape [batch_size].
+        b_lengths: Lengths of sequences in b.  Tensor of shape [batch_size].
+        max_seq_len: Length of padded sequences a and b.  Integer.
+        hidden_units: Number of hidden units.  Integer.
 
     Returns:
-        Tensor of shape [max_seq_len, max_seq_len]
+        Attention matrix.  Tensor of shape [max_seq_len, max_seq_len].
 
     """
     with tf.variable_scope(scope, reuse=reuse):
@@ -41,15 +41,15 @@ def additive_attention(a, b, a_lengths, b_lengths, max_seq_len, hidden_units=150
     matrix. The rows of attn are softmax normalized.
 
     Args:
-        a: Tensor of shape [batch_size, max_seq_len, input_dim]
-        b: Tensor of shape [batch_size, max_seq_len, input_dim]
-        a_lengths: lengths of sequences in a of shape [batch_size]
-        b_lengths: lengths of sequences in b of shape [batch_size]
-        max_seq_len: length of padded sequences a and b
-        hidden_units: number of hidden units
+        a: Input sequence a.  Tensor of shape [batch_size, max_seq_len, input_size].
+        b: Input sequence b.  Tensor of shape [batch_size, max_seq_len, input_size].
+        a_lengths: Lengths of sequences in a.  Tensor of shape [batch_size].
+        b_lengths: Lengths of sequences in b.  Tensor of shape [batch_size].
+        max_seq_len: Length of padded sequences a and b.  Integer.
+        hidden_units: Number of hidden units.  Integer.
 
     Returns:
-        Tensor of shape [max_seq_len, max_seq_len]
+        Attention matrix.  Tensor of shape [max_seq_len, max_seq_len].
 
     """
     with tf.variable_scope(scope, reuse=reuse):
@@ -59,7 +59,7 @@ def additive_attention(a, b, a_lengths, b_lengths, max_seq_len, hidden_units=150
         bW = tf.expand_dims(bW, 1)
         v = tf.get_variable(
             name='dot_weights',
-            initializer=tf.ones_initializer(),
+            initializer=tf.variance_scaling_initializer(),
             shape=[hidden_units]
         )
         logits = tf.einsum('ijkl,l->ijk', tf.nn.tanh(aW + bW), v)
@@ -77,15 +77,15 @@ def concat_attention(a, b, a_lengths, b_lengths, max_seq_len, hidden_units=150,
     matrix.  The rows of attn are softmax normalized.
 
     Args:
-        a: Tensor of shape [batch_size, max_seq_len, input_dim]
-        b: Tensor of shape [batch_size, max_seq_len, input_dim]
-        a_lengths: lengths of sequences in a of shape [batch_size]
-        b_lengths: lengths of sequences in b of shape [batch_size]
-        max_seq_len: length of padded sequences a and b
-        hidden_units: number of hidden units
+        a: Input sequence a.  Tensor of shape [batch_size, max_seq_len, input_size].
+        b: Input sequence b.  Tensor of shape [batch_size, max_seq_len, input_size].
+        a_lengths: Lengths of sequences in a.  Tensor of shape [batch_size].
+        b_lengths: Lengths of sequences in b.  Tensor of shape [batch_size].
+        max_seq_len: Length of padded sequences a and b.  Integer.
+        hidden_units: Number of hidden units.  Integer.
 
     Returns:
-        Tensor of shape [max_seq_len, max_seq_len]
+        Attention matrix.  Tensor of shape [max_seq_len, max_seq_len].
 
     """
     with tf.variable_scope(scope, reuse=reuse):
@@ -116,14 +116,14 @@ def dot_attention(a, b, a_lengths, b_lengths, max_seq_len):
     where attn(i, j) = dot(a_i, b_j). The rows of attn are softmax normalized.
 
     Args:
-        a: Tensor of shape [batch_size, max_seq_len, input_dim]
-        b: Tensor of shape [batch_size, max_seq_len, input_dim]
-        a_lengths: lengths of sequences in a of shape [batch_size]
-        b_lengths: lengths of sequences in b of shape [batch_size]
-        max_seq_len: length of padded sequences a and b
+        a: Input sequence a.  Tensor of shape [batch_size, max_seq_len, input_size].
+        b: Input sequence b.  Tensor of shape [batch_size, max_seq_len, input_size].
+        a_lengths: Lengths of sequences in a.  Tensor of shape [batch_size].
+        b_lengths: Lengths of sequences in b.  Tensor of shape [batch_size].
+        max_seq_len: Length of padded sequences a and b.  Integer.
 
     Returns:
-        Tensor of shape [max_seq_len, max_seq_len]
+        Attention matrix.  Tensor of shape [max_seq_len, max_seq_len]
 
     """
     logits = tf.matmul(a, tf.transpose(b, (0, 2, 1)))
@@ -140,14 +140,14 @@ def cosine_attention(a, b, a_lengths, b_lengths, max_seq_len):
     normalized.
 
     Args:
-        a: Tensor of shape [batch_size, max_seq_len, input_dim]
-        b: Tensor of shape [batch_size, max_seq_len, input_dim]
-        a_lengths: lengths of sequences in a of shape [batch_size]
-        b_lengths: lengths of sequences in b of shape [batch_size]
-        max_seq_len: length of padded sequences a and b
+        a: Input sequence a.  Tensor of shape [batch_size, max_seq_len, input_size].
+        b: Input sequence b.  Tensor of shape [batch_size, max_seq_len, input_size].
+        a_lengths: Lengths of sequences in a.  Tensor of shape [batch_size].
+        b_lengths: Lengths of sequences in b.  Tensor of shape [batch_size].
+        max_seq_len: Length of padded sequences a and b.  Integer.
 
     Returns:
-        Tensor of shape [max_seq_len, max_seq_len]
+        Attention matrix.  Tensor of shape [max_seq_len, max_seq_len].
 
     """
     a_norm = tf.nn.l2_normalize(a, dim=2)
@@ -163,16 +163,16 @@ def mask_attention_weights(weights, a_lengths, b_lengths, max_seq_len):
     """
     Masks an attention matrix for sequences a and b of lengths a_lengths and b_lengths so that
     the attention matrix of shape max_len by max_len contains zeros outside of
-    a_lengths by b_lengths submatrix int the top left corner.
+    a_lengths by b_lengths submatrix in the top left corner.
 
     Args:
         weights: Tensor of shape [max_seq_len, max_seq_len].
-        a_lengths: Lengths of sequences in a of shape [batch size].
-        b_lengths: Lengths of sequences in b of shape [batch size].
-        max_seq_len: Max length of padded sequences
+        a_lengths: Lengths of sequences in a.  Tensor of shape [batch_size].
+        b_lengths: Lengths of sequences in b.  Tensor of shape [batch_size].
+        max_seq_len: Length of padded sequences a and b.  Integer.
 
     Returns:
-        Tensor of shape [max_seq_len, max_seq_len]
+        Masked attention matrix.  Tensor of shape [max_seq_len, max_seq_len].
 
     """
     a_mask = tf.expand_dims(tf.sequence_mask(a_lengths, maxlen=max_seq_len), 2)
@@ -182,94 +182,82 @@ def mask_attention_weights(weights, a_lengths, b_lengths, max_seq_len):
 
 
 def softmax_attentive_matching(a, b, a_lengths, b_lengths, max_seq_len, attention_func=dot_attention,
-                               hidden_units=150, scope='softmax_attentive-matching', reuse=False):
+                               attention_func_kwargs={}):
     """
     Matches each vector in a with a weighted sum of the vectors in b.  The weighted sum is determined
-    by the attention matrix.  If factorized is True, then the attention matrix is the calculated
-    using factorized_attention_matrix.  Otherwise, attention_matrix will be used.
+    by the attention matrix.  The attention matrix is computed using attention_func.
 
     Args:
-        a: Tensor of shape [batch_size, max_seq_len, input_dim]
-        b: Tensor of shape [batch_size, max_seq_len, input_dim]
-        a_lengths: lengths of sequences in a of shape [batch_size]
-        b_lengths: lengths of sequences in b of shape [batch_size]
-        max_seq_len: length of padded sequences a and b
-        attention_func:  function, type of attention to use
-        num_dense_layers: number of dense layers in feedforward network F
-        hidden_units: number of hidden units in each layer of F
+        a: Input sequence a.  Tensor of shape [batch_size, max_seq_len, input_size].
+        b: Input sequence b.  Tensor of shape [batch_size, max_seq_len, input_size].
+        a_lengths: Lengths of sequences in a.  Tensor of shape [batch_size].
+        b_lengths: Lengths of sequences in b.  Tensor of shape [batch_size].
+        max_seq_len: Length of padded sequences a and b.  Integer.
+        attention_func: Function used to calculate attention matrix.  Can be one of the following:
+            multiplicative_attention, additive_attention, concat_attention, dot_attention,
+            or cosine_attention.
+        attention_func_kwargs: Keyword arguments to pass to attention_func.
 
     Returns:
-        Tensor of shape [batch_size, max_seq_len, input_dim] consisting of the matching vectors for
+        Tensor of shape [batch_size, max_seq_len, input_size] consisting of the matching vectors for
         each timestep in a.
 
     """
-    if attention_func in {multiplicative_attention, additive_attention, concat_attention}:
-        attn = attention_func(a, b, a_lengths, b_lengths, max_seq_len, hidden_units, scope=scope, reuse=reuse)
-    elif attention_func in {dot_attention, cosine_attention}:
-        attn = attention_func(a, b, a_lengths, b_lengths, max_seq_len)
-    else:
-        raise ValueError("invalid function given for attention_func")
+    attn = attention_func(a, b, a_lengths, b_lengths, max_seq_len, **attention_func_kwargs)
     return tf.matmul(attn, b)
 
 
 def maxpool_attentive_matching(a, b, a_lengths, b_lengths, max_seq_len, attention_func=dot_attention,
-                               hidden_units=150, scope='maxpool_attentive-matching', reuse=False):
+                               attention_func_kwargs={}):
     """
-    Same as softmax_attentive_matching, but after weighting elements in b, uses maxpooling to reduce
-    the dimension instead of contraction.
+    Matches each vector in a with a vector created by maxpooling over the weighted vectors in b.
+    The weightings are determined by the attention matrix.  The attention matrix is
+    computed using attention_func.
 
     Args:
-        a: Tensor of shape [batch_size, max_seq_len, input_dim]
-        b: Tensor of shape [batch_size, max_seq_len, input_dim]
-        a_lengths: lengths of sequences in a of shape [batch_size]
-        b_lengths: lengths of sequences in b of shape [batch_size]
-        max_seq_len: length of padded sequences a and b
-        factorized:  Whether or not to use a factorized attention matrix
-        num_dense_layers: number of dense layers in feedforward network F
-        hidden_units: number of hidden units in each layer of F
+        a: Input sequence a.  Tensor of shape [batch_size, max_seq_len, input_size].
+        b: Input sequence b.  Tensor of shape [batch_size, max_seq_len, input_size].
+        a_lengths: Lengths of sequences in a.  Tensor of shape [batch_size].
+        b_lengths: Lengths of sequences in b.  Tensor of shape [batch_size].
+        max_seq_len: Length of padded sequences a and b.  Integer.
+        attention_func: Function used to calculate attention matrix.  Can be one of the following:
+            multiplicative_attention, additive_attention, concat_attention, dot_attention,
+            or cosine_attention.
+        attention_func_kwargs: Keyword arguments to pass to attention_func.
 
     Returns:
-        Tensor of shape [batch_size, max_seq_len, input_dim] consisting of the matching vectors for
+        Tensor of shape [batch_size, max_seq_len, input_size] consisting of the matching vectors for
         each timestep in a.
 
     """
-    if attention_func in {multiplicative_attention, additive_attention, concat_attention}:
-        attn = attention_func(a, b, a_lengths, b_lengths, max_seq_len, hidden_units, scope=scope, reuse=reuse)
-    elif attention_func in {dot_attention, cosine_attention}:
-        attn = attention_func(a, b, a_lengths, b_lengths, max_seq_len)
-    else:
-        raise ValueError("invalid function given for attention_func")
+    attn = attention_func(a, b, a_lengths, b_lengths, max_seq_len, **attention_func_kwargs)
     return tf.reduce_max(tf.einsum('ijk,ikl->ijkl', attn, b), axis=2)
 
 
 def argmax_attentive_matching(a, b, a_lengths, b_lengths, max_seq_len, attention_func=dot_attention,
-                              hidden_units=150, scope='argmax_attentive-matching', reuse=False):
+                              attention_func_kwargs={}):
     """
-    Same as softmax_attentive_matching, but instead of matching each vector in a with a weighted sum
-    of the vectors in b, it simply uses the most similar vector in b, where similarity is defined using
-    the values in the attention matrix.
+    Matches each vector in a with the weighted vector in b that has the largest inner product.
+    The weightings are determined by the attention matrix.  The attention matrix is computed
+    using attention_func.
 
-     Args:
-        a: Tensor of shape [batch_size, max_seq_len, input_dim]
-        b: Tensor of shape [batch_size, max_seq_len, input_dim]
-        a_lengths: lengths of sequences in a of shape [batch_size]
-        b_lengths: lengths of sequences in b of shape [batch_size]
-        max_seq_len: length of padded sequences a and b
-        factorized:  Whether or not to use a factorized attention matrix
-        num_dense_layers: number of dense layers in feedforward network F
-        hidden_units: number of hidden units in each layer of F
+    Args:
+        a: Input sequence a.  Tensor of shape [batch_size, max_seq_len, input_size].
+        b: Input sequence b.  Tensor of shape [batch_size, max_seq_len, input_size].
+        a_lengths: Lengths of sequences in a.  Tensor of shape [batch_size].
+        b_lengths: Lengths of sequences in b.  Tensor of shape [batch_size].
+        max_seq_len: Length of padded sequences a and b.  Integer.
+        attention_func: Function used to calculate attention matrix.  Can be one of the following:
+            multiplicative_attention, additive_attention, concat_attention, dot_attention,
+            or cosine_attention.
+        attention_func_kwargs: Keyword arguments to pass to attention_func.
 
     Returns:
-        Tensor of shape [batch_size, max_seq_len, input_dim] consisting of the matching vectors for
+        Tensor of shape [batch_size, max_seq_len, input_size] consisting of the matching vectors for
         each timestep in a.
 
     """
-    if attention_func in {multiplicative_attention, additive_attention, concat_attention}:
-        attn = attention_func(a, b, a_lengths, b_lengths, max_seq_len, hidden_units, scope=scope, reuse=reuse)
-    elif attention_func in {dot_attention, cosine_attention}:
-        attn = attention_func(a, b, a_lengths, b_lengths, max_seq_len)
-    else:
-        raise ValueError("invalid function given for attention_func")
+    attn = attention_func(a, b, a_lengths, b_lengths, max_seq_len, **attention_func_kwargs)
     b_match_idx = tf.argmax(attn, axis=2)
     batch_index = tf.tile(tf.expand_dims(tf.range(shape(b, 0), dtype=tf.int64), 1), (1, max_seq_len))
     b_idx = tf.stack([batch_index, b_match_idx], axis=2)

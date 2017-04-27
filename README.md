@@ -11,7 +11,7 @@ detect duplicate questions on Quora
   * lstm layer
   * bidirectional lstm layer
   * time distributed dense layer
-  * time distributed convolution layer
+  * temporal convolution layer
   * dense layer
 
 **attend.py**

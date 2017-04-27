@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 from encode import lstm_encoder
-from propogate import time_distributed_convolution_layer
+from propogate import temporal_convolution_layer
 from utils import shape
 
 
@@ -13,14 +13,14 @@ def embedding_from_sparse_encodings(encodings, shape, embedding_matrix=None, sco
     initialized with random embeddings.
 
     Args:
-        encodings: Tensor of shape [batch size, sequence length]
+        encodings: Tensor of shape [batch_size, sequence length].
         shape: Shape of 2D parameter matrix.  The first dimension should contain
             the vocabulary size and the second dimension should be the size
             of the embedding dimension.
-        embedding_matrix: numpy array of the embedding matrix
+        embedding_matrix: numpy array of the embedding matrix.
 
     Returns:
-        Tensor of shape [batch size, sequence length, shape[1]]
+        Sequence of embedding vectors.  Tensor of shape [batch_size, sequence length, shape[1]].
 
     """
     with tf.variable_scope(scope, reuse=reuse):
@@ -38,11 +38,11 @@ def dense_word_embedding_from_chars(chars, embed_dim, bias=True, scope='dense-wo
     Word embeddings via dense transformation + maxpooling of character sequences.
 
     Args:
-        chars: Tensor of shape [batch size, word sequence length, char sequence length, alphabet size]
-        embed_dim: dimension of word embeddings
+        chars: Tensor of shape [batch_size, word sequence length, char sequence length, alphabet size].
+        embed_dim: Dimension of word embeddings.  Integer.
 
     Returns:
-        Tensor of shape [batch size, word sequence length, embed_dim]
+        Sequence of embedding vectors.  Tensor of shape [batch_size, word sequence length, embed_dim].
 
     """
     with tf.variable_scope(scope, reuse=reuse):
@@ -69,12 +69,12 @@ def lstm_word_embedding_from_chars(chars, lengths, embed_dim, scope='lstm-word-e
     Word embeddings via LSTM encoding of character sequences.
 
     Args:
-        chars: Tensor of shape [batch size, word sequence length, char sequence length, num characters]
-        lengths: Tensor of shape [batch size, word_sequence length]
-        embed_dim: dimension of word embeddings
+        chars: Tensor of shape [batch_size, word sequence length, char sequence length, num characters].
+        lengths: Tensor of shape [batch_size, word_sequence length].
+        embed_dim: Dimension of word embeddings.  Integer.
 
     Returns:
-        Tensor of shape [batch size, word sequence length, embed_dim]
+        Sequence of embedding vectors.  Tensor of shape [batch_size, word sequence length, embed_dim].
 
     """
     chars = tf.cast(chars, tf.float32)
@@ -99,12 +99,12 @@ def convolutional_word_embedding_from_chars(chars, embed_dim, convolution_width,
     Word embeddings via convolution + maxpooling of character sequences.
 
     Args:
-        chars: Tensor of shape [batch size, word sequence length, char sequence length, alphabet size]
-        embed_dim: dimension of word embeddings
-        convolution_width:  Number of characters used in the convolution
+        chars: Tensor of shape [batch_size, word sequence length, char sequence length, alphabet size].
+        embed_dim: Dimension of word embeddings  Integer.
+        convolution_width:  Number of characters used in the convolution.  Integer.
 
     Returns:
-        Tensor of shape [batch size, word sequence length, embed_dim]
+        Sequence of embedding vectors.  Tensor of shape [batch_size, word sequence length, embed_dim].
 
     """
     chars = tf.cast(chars, tf.float32)
@@ -115,7 +115,7 @@ def convolutional_word_embedding_from_chars(chars, embed_dim, convolution_width,
     conv_word_embeddings = []
     for i, char in enumerate(chars):
         temp_reuse = i != 0 or reuse
-        conv = time_distributed_convolution_layer(
+        conv = temporal_convolution_layer(
             char, embed_dim, convolution_width, scope=scope, reuse=temp_reuse)
         embedding = tf.reduce_max(conv, axis=1)
         conv_word_embeddings.append(embedding)

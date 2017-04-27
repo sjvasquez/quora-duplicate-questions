@@ -6,13 +6,13 @@ def lstm_encoder(inputs, lengths, state_size, keep_prob, scope='lstm-encoder', r
     LSTM encoder
 
     Args:
-        inputs: Tensor of shape [batch size, max sequence length, ...].
-        lengths: Tensor of shape [batch size].
+        inputs:  Sequence data. Tensor of shape [batch_size, max_seq_len, input_size].
+        lengths: Lengths of sequences in inputs.  Tensor of shape [batch_size].
         state_size: LSTM state size.
         keep_prob: 1 - p, where p is the dropout probability.
 
     Returns:
-        Tensor of shape [batch size, state size] containing the final h states.
+        Tensor of shape [batch_size, state size] containing the final h states.
 
     """
     with tf.variable_scope(scope, reuse=reuse):
@@ -37,13 +37,13 @@ def bidirectional_lstm_encoder(inputs, lengths, state_size, keep_prob, scope='bi
     Bidirectional LSTM encoder
 
     Args:
-        inputs: Tensor of shape [batch size, max sequence length, ...].
-        lengths: Tensor of shape [batch size].
+        inputs:  Sequence data. Tensor of shape [batch_size, max_seq_len, input_size].
+        lengths: Lengths of sequences in inputs.  Tensor of shape [batch_size].
         state_size: LSTM state size.
         keep_prob: 1 - p, where p is the dropout probability.
 
     Returns:
-        Tensor of shape [batch size, 2*state size] containing theconcatenated
+        Tensor of shape [batch_size, 2*state size] containing the concatenated
         forward and backward lstm final h states.
 
     """
@@ -79,10 +79,10 @@ def reduce_max_encoder(inputs):
     Max pooling over the time dimension
 
     Args:
-        inputs: Tensor of shape [batch size, max sequence length, layer_size].
+        inputs:  Sequence data. Tensor of shape [batch_size, max_seq_len, input_size].
 
     Returns:
-        Tensor of shape [batch size, layer_size].
+        Tensor of shape [batch_size, input_size].
     """
     return tf.reduce_max(inputs, axis=1)
 
@@ -92,10 +92,10 @@ def reduce_sum_encoder(inputs):
     Sum pooling over the time dimension
 
     Args:
-        inputs: Tensor of shape [batch size, max sequence length, layer_size].
+        inputs:  Sequence data. Tensor of shape [batch_size, max_seq_len, input_size].
 
     Returns:
-        Tensor of shape [batch size, layer_size].
+        Tensor of shape [batch_size, input_size].
     """
     return tf.reduce_sum(inputs, axis=1)
 
@@ -105,10 +105,10 @@ def reduce_mean_encoder(inputs, lengths):
     Max pooling over the time dimension
 
     Args:
-        inputs: Tensor of shape [batch size, max sequence length, layer_size].
-        lengths: Tensor of shape [batch_size] with entry i containing the integer length of sequence i
+        inputs:  Sequence data. Tensor of shape [batch_size, max_seq_len, input_size].
+        lengths: Lengths of sequences in inputs.  Tensor of shape [batch_size].
 
     Returns:
-        Tensor of shape [batch size, layer_size].
+        Tensor of shape [batch_size, input_size].
     """
     return tf.reduce_sum(inputs, axis=1) / tf.expand_dims(lengths, 1)
